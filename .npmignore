@@ -20,3 +20,6 @@ docs/
 # OS noise
 .DS_Store
 *.local
+
+# Others
+*.tgz

@@ -17,3 +17,6 @@ tmp/
 # OS / editor noise
 .DS_Store
 *.local
+
+# others
+*.tgz

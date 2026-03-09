@@ -328,22 +328,26 @@ async function completeAuthGate(
       ],
     );
 
+    // The template only contains a 'custom' placeholder entry under model_providers.
+    // We always write into that fixed slot and set the 'name' field to whatever
+    // the user typed, so the generated TOML always contains [model_providers.custom].
+    const PROVIDER_SLOT = 'custom';
     session.set('model_provider', providerName);
     session.set('model', model);
     session.set('review_model', model);
-    session.set(`model_providers.${providerName}.name`, providerName);
-    session.set(`model_providers.${providerName}.base_url`, result.baseUrl);
-    session.set(`model_providers.${providerName}.wire_api`, 'responses');
-    session.set(`model_providers.${providerName}.requires_openai_auth`, false);
+    session.set(`model_providers.${PROVIDER_SLOT}.name`, providerName);
+    session.set(`model_providers.${PROVIDER_SLOT}.base_url`, result.baseUrl);
+    session.set(`model_providers.${PROVIDER_SLOT}.wire_api`, 'responses');
+    session.set(`model_providers.${PROVIDER_SLOT}.requires_openai_auth`, false);
 
     if (storageMode === 'env') {
       const envName = await driver.text({
         message: language === 'zh-CN' ? '请输入存放 Key 的环境变量名' : 'Enter the environment variable name that will store the key',
         initialValue: 'OPENAI_API_KEY',
       });
-      session.set(`model_providers.${providerName}.env_key`, envName);
+      session.set(`model_providers.${PROVIDER_SLOT}.env_key`, envName);
       session.set(
-        `model_providers.${providerName}.env_key_instructions`,
+        `model_providers.${PROVIDER_SLOT}.env_key_instructions`,
         language === 'zh-CN'
           ? `请在启动 Codex 前设置 ${envName} 环境变量。`
           : `Set the ${envName} environment variable before starting Codex.`,
@@ -355,7 +359,7 @@ async function completeAuthGate(
         language === 'zh-CN' ? '安全提示' : 'Security note',
       );
     } else {
-      session.set(`model_providers.${providerName}.experimental_bearer_token`, apiKey);
+      session.set(`model_providers.${PROVIDER_SLOT}.experimental_bearer_token`, apiKey);
     }
 
     driver.note(language === 'zh-CN' ? '第三方接入测试通过。' : 'Third-party access is ready.', language === 'zh-CN' ? '接入成功' : 'Connected');
