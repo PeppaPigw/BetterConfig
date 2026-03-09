@@ -10,15 +10,13 @@ export async function runCli(): Promise<void> {
   });
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
-  runCli().catch((error: unknown) => {
-    if (error instanceof AppCancelledError) {
-      process.stderr.write('Cancelled.\n');
-      process.exitCode = 1;
-      return;
-    }
-    const message = error instanceof Error ? error.stack ?? error.message : String(error);
-    process.stderr.write(`${message}\n`);
+runCli().catch((error: unknown) => {
+  if (error instanceof AppCancelledError) {
+    process.stderr.write('Cancelled.\n');
     process.exitCode = 1;
-  });
-}
+    return;
+  }
+  const message = error instanceof Error ? error.stack ?? error.message : String(error);
+  process.stderr.write(`${message}\n`);
+  process.exitCode = 1;
+});
