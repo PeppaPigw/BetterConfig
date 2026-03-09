@@ -1,0 +1,19 @@
+# Dependencies
+node_modules/
+
+# Build output (regenerate with `npm run build`)
+dist/
+
+# Test coverage
+coverage/
+
+# Runtime state written by betterconfig itself
+.betterconfig/
+
+# Temporary files
+tmp/
+.tmp/
+
+# OS / editor noise
+.DS_Store
+*.local

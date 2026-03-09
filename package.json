@@ -1,0 +1,52 @@
+{
+  "name": "betterconfig-cli",
+  "version": "0.1.0",
+  "description": "Interactive Codex config onboarding CLI",
+  "main": "dist/src/index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsx src/cli.ts",
+    "test:watch": "vitest",
+    "lint": "tsc -p tsconfig.json --noEmit"
+  },
+  "keywords": [
+    "codex",
+    "config",
+    "cli",
+    "toml",
+    "onboarding"
+  ],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "private": false,
+  "bin": {
+    "betterconfig": "dist/src/cli.js"
+  },
+  "dependencies": {
+    "@clack/prompts": "^1.1.0",
+    "@iarna/toml": "^2.2.5",
+    "execa": "^9.6.1",
+    "picocolors": "^1.1.1",
+    "string-width": "^8.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.3.5",
+    "strip-ansi": "^7.2.0",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.18"
+  },
+  "files": [
+    "dist/src",
+    "template.toml",
+    "data"
+  ],
+  "engines": {
+    "node": ">=20"
+  }
+}

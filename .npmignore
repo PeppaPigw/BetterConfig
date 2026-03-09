@@ -1,0 +1,22 @@
+# Source TypeScript (npm gets compiled dist/ only)
+src/
+tests/
+tmp/
+.tmp/
+coverage/
+
+# Compiled test and dev artifacts inside dist/
+dist/tests/
+dist/vitest.config.js
+
+# Config/tooling files not needed at runtime
+tsconfig.json
+vitest.config.ts
+.gitignore
+
+# Docs and design assets
+docs/
+
+# OS noise
+.DS_Store
+*.local

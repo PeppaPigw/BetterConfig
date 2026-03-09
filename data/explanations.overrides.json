@@ -1,0 +1,46 @@
+{
+  "model": {
+    "zhCN": "决定大多数对话、改代码和工具调用使用的默认模型。",
+    "en": "Chooses the default model used for most chats, edits, and tool calls."
+  },
+  "review_model": {
+    "zhCN": "决定 `/review` 默认使用哪一个模型。",
+    "en": "Chooses which model `/review` uses by default."
+  },
+  "model_provider": {
+    "zhCN": "决定这些模型名称默认交给哪个 provider 解析和调用。",
+    "en": "Chooses which provider resolves and serves your configured model names."
+  },
+  "log_dir": {
+    "zhCN": "指定 Codex 日志文件默认写到哪个目录。",
+    "en": "Sets the directory where Codex stores its log files."
+  },
+  "sqlite_home": {
+    "zhCN": "指定 Codex 状态数据库默认存放在哪个目录。",
+    "en": "Sets the directory where Codex stores its SQLite state data."
+  },
+  "profiles.default.tools_view_image": {
+    "zhCN": "控制 default profile 是否默认启用本地图像查看工具。",
+    "en": "Controls whether the default profile enables the local image viewer tool."
+  },
+  "profiles.default.tools_web_search": {
+    "zhCN": "控制 default profile 是否默认启用网页搜索工具。",
+    "en": "Controls whether the default profile enables the web search tool."
+  },
+  "profiles.fast.tools_view_image": {
+    "zhCN": "控制 fast profile 是否默认启用本地图像查看工具。",
+    "en": "Controls whether the fast profile enables the local image viewer tool."
+  },
+  "profiles.fast.tools_web_search": {
+    "zhCN": "控制 fast profile 是否默认启用网页搜索工具。",
+    "en": "Controls whether the fast profile enables the web search tool."
+  },
+  "profiles.safe.tools_view_image": {
+    "zhCN": "控制 safe profile 是否默认启用本地图像查看工具。",
+    "en": "Controls whether the safe profile enables the local image viewer tool."
+  },
+  "profiles.safe.tools_web_search": {
+    "zhCN": "控制 safe profile 是否默认启用网页搜索工具。",
+    "en": "Controls whether the safe profile enables the web search tool."
+  }
+}

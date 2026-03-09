@@ -1,0 +1,581 @@
+#:schema https://developers.openai.com/codex/config-schema.json
+# Codex CLI 配置文件（通用最佳体验版）
+#
+# 设计目标：
+# 1) 默认适合个人本地开发：稳定、够快、少打断、风险可控。
+# 2) 优先使用官方 OpenAI provider，避免伪造的自定义 provider / 代理 / 端点。
+# 3) 凡是强依赖你机器环境的配置（绝对路径、MCP、OTEL、代理、私有证书、回调地址），
+#    默认保留模板但不启用；这样最不容易因为“占位符还没改”而启动报错。
+# 4) 凡是当前公开文档里已标为 legacy / 已内置 / 版本相关的键，统一收敛到兼容注释区。
+#
+# 生效优先级通常是：
+# CLI 参数 > 当前启用的 profile > 本文件顶层值 > 内建默认值
+#
+# 说明：
+# - TOML 要求：所有顶层键必须写在各个 [table] 之前。
+# - 本文件已经尽量“写全”，但有些键的最佳值就是“保持未设置”，那类我会保留注释模板。
+# - 路径、域名、Token、证书、MCP server、代理等，不存在通用最佳值；默认不启用最稳。
+
+# ------------------------------------------------------------------------------
+# 1) 核心模型与运行策略
+# ------------------------------------------------------------------------------
+
+model = "gpt-5.4"                  # 默认主模型：当前通用首选。
+review_model = "gpt-5.4"           # /review 也保持同模型，减少行为差异。
+model_provider = "openai"          # 通用最佳体验优先用官方 provider；自定义 provider 见后文注释模板。
+
+approval_policy = "on-request"     # 推荐平衡点：必要时才停下来问；比 never 更稳，比 untrusted 更顺手。
+sandbox_mode = "workspace-write"   # 推荐平衡点：可改当前工作区，但默认不放开额外路径与网络。
+web_search = "cached"              # 默认用缓存检索：快、稳、较少暴露到任意实时网页。
+service_tier = "fast"              # 更偏低延迟；若你的计划不支持或你更看重稳定配额，可改为 "flex"。
+personality = "pragmatic"          # 写代码/改配置时更实用；比 friendly 更克制。
+
+model_reasoning_effort = "high"    # 默认高推理，适合代码、重构、审查、排障。
+plan_mode_reasoning_effort = "high" # plan mode 继续保持高推理，避免计划质量下降。
+model_reasoning_summary = "auto"   # 让客户端自己决定摘要展示级别。
+model_supports_reasoning_summaries = true # 配合官方 GPT-5.4 使用时可显式声明。
+model_verbosity = "medium"         # 输出不要太碎，也不要太啰嗦。
+
+profile = "default"                # 启动即套用下面的 [profiles.default]。
+
+allow_login_shell = true           # 更贴近日常终端环境，语言管理器/版本管理器兼容性更好。
+check_for_update_on_startup = true # 建议开启，方便及时获得行为修复。
+suppress_unstable_features_warning = false # 默认保留提醒；只有你明确接受实验功能再压掉。
+disable_paste_burst = false        # 保留大段粘贴保护。
+hide_agent_reasoning = false       # 默认显示 reasoning 事件，方便判断代理在做什么。
+show_raw_agent_reasoning = false   # 原始 reasoning 噪音大，默认关闭。
+windows_wsl_setup_acknowledged = false # 不预先把 WSL 提示标记成“已读”。
+
+background_terminal_max_timeout = 300000 # 后台终端空轮询最长 5 分钟；官方默认即合理。
+tool_output_token_limit = 12000          # 单次工具输出进上下文的预算；够用且不易浪费。
+# model_auto_compact_token_limit = 64000 # 建议通常留空交给模型默认；只有你清楚上下文预算时再手填。
+# model_context_window = 128000           # 建议通常留空交给模型/目录自动判断；手填错了反而影响 compaction。
+
+file_opener = "cursor"              # 你原模板就是 Cursor；若你不用 Cursor，可改成 vscode / windsurf / none。
+cli_auth_credentials_store = "auto" # 凭据优先走更合适的系统存储。
+mcp_oauth_credentials_store = "auto" # MCP OAuth 也优先自动选择安全存储。
+
+# forced_login_method = "chatgpt"   # 只有你想强制某一种登录方式时才打开。
+# forced_chatgpt_workspace_id = "00000000-0000-0000-0000-000000000000" # 仅多 workspace 管理场景需要。
+chatgpt_base_url = "https://chatgpt.com/backend-api/" # 用官方 sample 的地址，不要写站点根路径。
+
+# notify 是“回合结束后执行的外部命令”，没有跨平台通用最佳值；默认不设最稳。
+# Windows 示例（蜂鸣）：
+# notify = ["powershell.exe", "-NoProfile", "-Command", "[console]::beep(880,120)"]
+# macOS 示例（通知中心）：
+# notify = ["osascript", "-e", "display notification \"Codex 已完成当前回合\" with title \"Codex\""]
+# Linux 示例（需安装 notify-send）：
+# notify = ["notify-send", "Codex", "当前回合已完成"]
+
+developer_instructions = "请始终使用清晰、准确、可验证的中文回答；不确定时先说清假设，再给出可执行结论。"
+# instructions = "Reserved for future use." # 当前更建议用 AGENTS.md 或 model_instructions_file，而不是长期依赖此字段。
+# compact_prompt = "Compress history into actionable facts." # 仅在你明确要改历史压缩风格时才覆盖。
+commit_attribution = ""             # 空字符串 = 关闭自动 Co-authored-by，避免留下错误署名。
+
+# 下面这些路径强依赖你的机器；最佳实践是“不乱填假路径”。
+# log_dir = "C:\\Users\\<YOUR_USER>\\.codex\\log"
+# sqlite_home = "C:\\Users\\<YOUR_USER>\\.codex\\sqlite"
+# model_catalog_json = "C:\\Users\\<YOUR_USER>\\.codex\\model_catalog.json"
+# model_instructions_file = "C:\\Users\\<YOUR_USER>\\.codex\\model_instructions.md"
+# experimental_compact_prompt_file = "C:\\Users\\<YOUR_USER>\\.codex\\compact_prompt.md"
+# js_repl_node_path = "C:\\Program Files\\nodejs\\node.exe"
+# js_repl_node_module_dirs = ["C:\\Users\\<YOUR_USER>\\workspace\\node_modules"]
+# zsh_path = "/usr/bin/zsh"
+
+project_doc_max_bytes = 32768       # 官方 sample 的更稳默认；避免把 README/AGENTS 塞太多进首轮上下文。
+project_doc_fallback_filenames = ["README.md", "CONTRIBUTING.md"] # AGENTS.md 缺失时再回退。
+project_root_markers = [".git", "package.json", "go.mod", "pyproject.toml"]
+
+# Realtime / WS 相关是实验性与环境相关项；默认不主动覆盖。
+# experimental_realtime_ws_backend_prompt = "use-default"
+# experimental_realtime_ws_base_url = "wss://api.openai.com/v1/realtime"
+# experimental_realtime_ws_model = "gpt-4o-realtime-preview"
+
+# 旧兼容项：现代配置更推荐走 [features]。
+experimental_use_unified_exec_tool = true
+
+# --oss 仅在你真要切到本地开源模型时才有意义；默认不强设。
+# oss_provider = "ollama"
+
+# MCP OAuth 回调：固定端口不是通用最佳值；留空让 OS 分配更省心。
+# mcp_oauth_callback_port = 4321
+# mcp_oauth_callback_url = "https://devbox.example.internal/callback"
+
+# ------------------------------------------------------------------------------
+# 2) 顶层对象配置
+# ------------------------------------------------------------------------------
+
+[analytics]
+enabled = true                      # 开启基础 analytics；若你非常重隐私，可改 false。
+
+[feedback]
+enabled = true                      # 保留 /feedback 能力。
+
+[history]
+persistence = "save-all"            # 保存完整会话历史，便于 resume / 排障 / 回看。
+max_bytes = 10485760                # 10 MB；足够日常使用，不会无限膨胀。
+
+[notice]
+hide_full_access_warning = false    # 不预先隐藏高风险提示。
+hide_gpt5_1_migration_prompt = true
+hide_rate_limit_model_nudge = false
+hide_world_writable_warning = false
+# model_migrations = { "gpt-5.3-codex" = "gpt-5.4" } # 只有你明确想静默迁移提示时再写。
+
+[windows]
+sandbox = "elevated"                # 官方推荐：原生 Windows 下优先 elevated。
+
+[sandbox_workspace_write]
+network_access = false              # workspace-write 下默认仍不开外网；需要时再精确放开。
+writable_roots = []                 # 最佳默认是只写当前工作区；不要预先扩权到别处。
+exclude_slash_tmp = false
+exclude_tmpdir_env_var = false
+
+[shell_environment_policy]
+inherit = "all"                     # 对本地开发最省心；配合默认敏感变量过滤。
+ignore_default_excludes = false     # 保留默认 KEY/SECRET/TOKEN 过滤。
+exclude = [
+  "*TOKEN*",
+  "*SECRET*",
+  "*PASSWORD*",
+  "*PRIVATE_KEY*",
+  "*SESSION*",
+  "*COOKIE*"
+]                                   # 注意：这里建议用 glob 风格，而不是正则。
+set = { LANG = "en_US.UTF-8" }      # 统一编码行为，跨工具更稳。
+include_only = []                   # 留空表示不做额外白名单裁剪；兼容性最好。
+experimental_use_profile = false    # 读用户 shell profile 虽更像手工终端，但也更不稳定。
+
+[memories]
+# 当前公开文档对这一整块没有稳定的通用说明；为了兼容你原模板，默认整块保留注释占位。
+# 若你的本地构建明确支持，再按需启用。
+# consolidation_model = "gpt-5.4"
+# extract_model = "gpt-5.4"
+# generate_memories = true
+# use_memories = true
+# no_memories_if_mcp_or_web_search = true
+# max_raw_memories_for_consolidation = 512
+# max_rollout_age_days = 30
+# max_rollouts_per_startup = 20
+# max_unused_days = 180
+# min_rollout_idle_hours = 12
+
+[tools]
+view_image = true                   # 本地图像查看建议保留。
+web_search = true                   # 旧兼容开关；与顶层 web_search 保持一致。
+
+[tui]
+alternate_screen = "auto"
+animations = true
+notification_method = "auto"
+notifications = true
+show_tooltips = true
+status_line = ["model-with-reasoning", "context-remaining", "current-dir"]
+theme = "catppuccin-mocha"          # 终端里更通用、护眼一些；如果你喜欢浅色再改 latte。
+
+# ------------------------------------------------------------------------------
+# 3) 权限 / 网络代理
+# ------------------------------------------------------------------------------
+
+[permissions.network]
+enabled = false                     # 没有明确需求时，不启用“受管网络代理层”。
+mode = "limited"                    # 即使以后启用，也从 limited 开始。
+allowed_domains = ["api.openai.com", "developers.openai.com"]
+denied_domains = []
+allow_upstream_proxy = false
+allow_local_binding = false
+enable_socks5 = false
+enable_socks5_udp = false
+dangerously_allow_non_loopback_proxy = false
+dangerously_allow_non_loopback_admin = false
+dangerously_allow_all_unix_sockets = false
+allow_unix_sockets = []
+# proxy_url = "http://127.0.0.1:43128"
+# socks_url = "http://127.0.0.1:43130"
+# admin_url = "http://127.0.0.1:43129"
+
+# ------------------------------------------------------------------------------
+# 4) 功能开关（只把真正值得显式控制的项写成活动值）
+# ------------------------------------------------------------------------------
+
+[features]
+apps = true                         # Connectors / Apps 很有用；不开启也不会自动乱用。
+apps_mcp_gateway = true
+artifact = true                     # 生成表格/幻灯片等原生 artifact 时更方便。
+child_agents_md = true              # 没有 AGENTS.md 时也补 scope 提示，减少多 agent 误解。
+collaboration_modes = true          # 兼容旧开关；当前构建即使不写通常也可用。
+default_mode_request_user_input = false # 当前仍偏实验；默认关，减少中断。
+enable_request_compression = true
+experimental_windows_sandbox = false
+fast_mode = true
+image_detail_original = true
+image_generation = true
+multi_agent = false                 # 仍属实验能力；默认关，避免复杂度和资源开销。
+personality = true
+powershell_utf8 = true              # Windows 下强烈建议开；非 Windows 无害。
+prevent_idle_sleep = true           # 长任务更省心。
+remote_models = false               # legacy，不建议依赖。
+request_rule = false                # legacy，当前构建大多已内置。
+responses_websockets = false        # 仍偏实验；默认关。
+responses_websockets_v2 = false
+runtime_metrics = false             # 默认关，界面更干净。
+search_tool = false                 # legacy，不建议依赖。
+shell_snapshot = true               # 重复命令更快。
+shell_tool = true
+skill_env_var_dependency_prompt = true
+skill_mcp_dependency_install = true
+sqlite = true
+steer = false                       # legacy，不建议依赖。
+undo = true                         # stable，但默认常为关闭；打开后体验更好。
+unified_exec = true                 # 建议开启；若 Windows 原生遇兼容问题，再改 false。
+use_linux_sandbox_bwrap = false     # Linux 下实验项，除非你明确要它。
+web_search = true                   # legacy 兼容；顶层 web_search 才是主开关。
+web_search_cached = true            # legacy 兼容。
+web_search_request = false          # 避免与顶层 cached 语义冲突。
+
+# ------------------------------------------------------------------------------
+# 5) Agent / Skills
+# ------------------------------------------------------------------------------
+
+[agents]
+max_threads = 8                     # 比官方默认更能打，但不至于像 32 那样过度占资源。
+max_depth = 2                       # 两层嵌套通常已够用，过深会更难控。
+job_max_runtime_seconds = 1800
+
+[agents.explorer]
+description = "Read-heavy codebase explorer focused on fast discovery, architecture mapping, and evidence gathering."
+nickname_candidates = ["Scout", "Indexer"]
+
+[agents.worker]
+description = "Implementation worker focused on making changes, running commands, and iterating on fixes."
+nickname_candidates = ["Builder", "Fixer"]
+
+[agents.reviewer]
+description = "Review-focused agent that looks for correctness, security, maintainability, and testing risks."
+nickname_candidates = ["Athena", "Ada"]
+
+# 如需 role 级额外配置层，再取消注释：
+# config_file = "./agents/explorer.toml"
+
+# 更推荐官方 sample 的数组表写法，可读性更高。
+# 不需要 per-skill 覆盖时，保留空数组最清晰。
+[skills]
+config = []
+
+# 示例：
+# [[skills.config]]
+# path = "C:\\Users\\<YOUR_USER>\\.codex\\skills\\my-skill-a\\SKILL.md"
+# enabled = true
+#
+# [[skills.config]]
+# path = "C:\\Users\\<YOUR_USER>\\.codex\\skills\\my-skill-b\\SKILL.md"
+# enabled = false
+
+# ------------------------------------------------------------------------------
+# 6) 模型提供商
+# ------------------------------------------------------------------------------
+
+# 通用最佳体验直接使用内建 openai provider，不需要额外定义。
+# 只有你要接私有网关 / Azure / 本地兼容服务时，才需要自定义 provider。
+#
+# [model_providers.custom]
+# name = "custom"
+# base_url = "http://127.0.0.1:8317/v1"
+# wire_api = "responses"
+# env_key = "OPENAI_API_KEY"
+# env_key_instructions = "Set OPENAI_API_KEY in your environment."
+# requires_openai_auth = false
+# supports_websockets = false
+# request_max_retries = 3
+# stream_max_retries = 10
+# stream_idle_timeout_ms = 300000
+# http_headers = { "x-client" = "codex" }
+# env_http_headers = { "Authorization" = "UPSTREAM_AUTH_BEARER" }
+# query_params = { "api-version" = "2026-01-01" }
+
+# ------------------------------------------------------------------------------
+# 7) MCP 服务器（默认不启用伪造样例；按需取消注释）
+# ------------------------------------------------------------------------------
+
+# [mcp_servers.filesystem]
+# command = "npx"
+# args = ["-y", "@modelcontextprotocol/server-filesystem", "C:\\Users\\<YOUR_USER>\\workspace"]
+# cwd = "C:\\Users\\<YOUR_USER>\\workspace"
+# enabled = true
+# required = false
+# startup_timeout_ms = 20000
+# tool_timeout_sec = 120
+# enabled_tools = ["list_files", "read_file", "search_files"]
+# disabled_tools = ["delete_file"]
+# env = { MCP_LOG_LEVEL = "info" }
+
+# [mcp_servers.github]
+# url = "https://api.githubcopilot.com/mcp/"
+# enabled = true
+# required = false
+# bearer_token_env_var = "GITHUB_TOKEN"
+# scopes = ["repo", "read:org"]
+# oauth_resource = "https://github.com/"
+# startup_timeout_sec = 30
+# tool_timeout_sec = 120
+# http_headers = { "x-org" = "your-org" }
+
+# ------------------------------------------------------------------------------
+# 8) Apps / Connectors 控制
+# ------------------------------------------------------------------------------
+
+[apps._default]
+enabled = true
+destructive_enabled = false         # 默认禁止 destructive_hint=true 的工具。
+open_world_enabled = true           # 默认允许 open_world_hint=true；需要更封闭可改 false。
+
+[apps.github]
+enabled = true
+default_tools_enabled = true
+default_tools_approval_mode = "auto"
+destructive_enabled = false
+open_world_enabled = true
+
+[apps.github.tools.search_issues]
+enabled = true
+approval_mode = "auto"
+
+[apps.github.tools.create_issue]
+enabled = true
+approval_mode = "prompt"            # 有副作用的工具显式提示更稳。
+
+# ------------------------------------------------------------------------------
+# 9) OpenTelemetry（默认仅保留最小安全配置；Exporter 样例注释）
+# ------------------------------------------------------------------------------
+
+[otel]
+environment = "dev"
+log_user_prompt = false             # 默认不要把原始 prompt 发出去。
+
+# [otel.trace_exporter.otlp-http]
+# endpoint = "http://127.0.0.1:4318/v1/traces"
+# protocol = "json"
+# headers = { "x-otel-key" = "replace-me" }
+
+# [otel.trace_exporter.otlp-http.tls]
+# ca-certificate = "C:\\certs\\otel-ca.pem"
+# client-certificate = "C:\\certs\\otel-client.pem"
+# client-private-key = "C:\\certs\\otel-client-key.pem"
+
+# [otel.metrics_exporter.otlp-http]
+# endpoint = "http://127.0.0.1:4318/v1/metrics"
+# protocol = "json"
+# headers = {}
+
+# [otel.exporter.otlp-http]
+# endpoint = "http://127.0.0.1:4318/v1/logs"
+# protocol = "json"
+# headers = {}
+
+# ------------------------------------------------------------------------------
+# 10) 项目信任映射（示例保留，默认不预置你的本地路径）
+# ------------------------------------------------------------------------------
+
+[projects]
+# [projects."C:\\Users\\<YOUR_USER>"]
+# trust_level = "trusted"
+#
+# [projects."\\\\?\\E:\\VSCodeSpace\\CLIProxyAPI"]
+# trust_level = "trusted"
+
+# ------------------------------------------------------------------------------
+# 11) Profiles
+# ------------------------------------------------------------------------------
+
+# default：日常主力档，和顶层策略基本一致。
+[profiles.default]
+model = "gpt-5.4"
+model_provider = "openai"
+approval_policy = "on-request"
+sandbox_mode = "workspace-write"
+web_search = "cached"
+service_tier = "fast"
+personality = "pragmatic"
+tools_view_image = true
+tools_web_search = true
+model_reasoning_effort = "high"
+model_reasoning_summary = "auto"
+model_verbosity = "medium"
+plan_mode_reasoning_effort = "high"
+experimental_use_unified_exec_tool = true
+chatgpt_base_url = "https://chatgpt.com/backend-api/"
+
+[profiles.default.analytics]
+enabled = true
+
+[profiles.default.windows]
+sandbox = "elevated"
+
+[profiles.default.features]
+artifact = true
+apps = true
+apps_mcp_gateway = true
+fast_mode = true
+image_generation = true
+multi_agent = false
+personality = true
+powershell_utf8 = true
+shell_snapshot = true
+shell_tool = true
+sqlite = true
+unified_exec = true
+undo = true
+
+# fast：你完全信任当前项目时用，追求少打断和更快响应。
+[profiles.fast]
+model = "gpt-5.4"
+model_provider = "openai"
+approval_policy = "never"
+sandbox_mode = "danger-full-access"
+web_search = "live"
+service_tier = "fast"
+personality = "pragmatic"
+tools_view_image = true
+tools_web_search = true
+model_reasoning_effort = "medium"
+model_reasoning_summary = "concise"
+model_verbosity = "low"
+
+[profiles.fast.features]
+fast_mode = true
+shell_snapshot = true
+shell_tool = true
+unified_exec = true
+
+# safe：审查 / 讲解 / 阅读模式。
+[profiles.safe]
+model = "gpt-5.4"
+model_provider = "openai"
+approval_policy = "untrusted"
+sandbox_mode = "read-only"
+web_search = "disabled"
+service_tier = "flex"
+personality = "pragmatic"
+tools_view_image = true
+tools_web_search = false
+model_reasoning_effort = "high"
+model_reasoning_summary = "auto"
+model_verbosity = "medium"
+
+[profiles.safe.features]
+artifact = true
+personality = true
+shell_tool = true
+sqlite = true
+undo = true
+
+# extreme：极致性能档——最新模型、最高推理、所有工具全开，适合复杂任务冲刺。
+[profiles.extreme]
+model = "gpt-5.4"
+model_provider = "openai"
+approval_policy = "never"
+sandbox_mode = "danger-full-access"
+web_search = "live"
+service_tier = "fast"
+personality = "pragmatic"
+tools_view_image = true
+tools_web_search = true
+model_reasoning_effort = "xhigh"
+plan_mode_reasoning_effort = "xhigh"
+model_reasoning_summary = "detailed"
+model_verbosity = "high"
+
+[profiles.extreme.features]
+apps = true
+apps_mcp_gateway = true
+artifact = true
+child_agents_md = true
+fast_mode = true
+image_detail_original = true
+image_generation = true
+multi_agent = true
+personality = true
+powershell_utf8 = true
+prevent_idle_sleep = true
+shell_snapshot = true
+shell_tool = true
+sqlite = true
+unified_exec = true
+undo = true
+
+# daily：日常轻量档——medium 推理、按需审批、稳定优先，接近 Codex 开箱默认值。
+[profiles.daily]
+model = "gpt-5.4"
+model_provider = "openai"
+approval_policy = "on-request"
+sandbox_mode = "workspace-write"
+web_search = "cached"
+service_tier = "fast"
+personality = "pragmatic"
+tools_view_image = true
+tools_web_search = true
+model_reasoning_effort = "medium"
+plan_mode_reasoning_effort = "medium"
+model_reasoning_summary = "auto"
+model_verbosity = "medium"
+
+[profiles.daily.features]
+artifact = true
+fast_mode = true
+personality = true
+powershell_utf8 = true
+shell_snapshot = true
+shell_tool = true
+sqlite = true
+unified_exec = true
+undo = true
+
+# ------------------------------------------------------------------------------
+# 12) 可选：对象形式 approval_policy（一般不必和字符串形式同时存在）
+# ------------------------------------------------------------------------------
+
+# approval_policy = "on-request"
+#
+# [approval_policy.reject]
+# mcp_elicitations = false
+# rules = false
+# sandbox_approval = false
+
+# ------------------------------------------------------------------------------
+# 13) 版本兼容 / 私有字段占位（默认不启用）
+# ------------------------------------------------------------------------------
+
+# 下面这些来自你原模板，但它们通常是：
+# - 机器环境强依赖项
+# - 旧版本兼容键
+# - 实验 / 私有 / 非公开稳定字段
+# - 或者当前公开 reference 不建议当作常规活动配置来依赖
+#
+# 我保留“占位说明”，但默认不激活，避免你把不兼容项写成活动值。
+
+# [audio]
+# microphone = "default"
+# speaker = "default"
+
+# [ghost_snapshot]
+# disable_warnings = false
+# ignore_large_untracked_dirs = 200
+# ignore_large_untracked_files = 2000
+
+# [plugins.example-plugin]
+# enabled = true
+
+# 以下旧兼容 / 版本相关 feature 键，通常不建议继续作为核心配置依赖：
+# collab = false
+# connectors = false
+# codex_git_commit = false
+# enable_experimental_windows_sandbox = false
+# include_apply_patch_tool = false
+# js_repl = false
+# js_repl_tools_only = false
+# memory_tool = false
+# realtime_conversation = false
+# request_permissions = false
+# voice_transcription = false
+# experimental_use_freeform_apply_patch = false
+# apply_patch_freeform = false
